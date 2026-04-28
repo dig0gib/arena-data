@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏟️ ARENA 대시보드</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: -apple-system, sans-serif; padding: 20px; }
+    h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    .subtitle { color: #8b949e; font-size: 0.85rem; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+    .card h2 { font-size: 1rem; color: #8b949e; margin-bottom: 12px; }
+    .value { font-size: 1.8rem; font-weight: bold; }
+    .bull .value { color: #f85149; }
+    .bear .value { color: #388bfd; }
+    .return-pct { font-size: 1rem; margin-top: 4px; }
+    .positive { color: #3fb950; } .negative { color: #f85149; } .neutral { color: #8b949e; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge.open { background: #1a3a1a; color: #3fb950; }
+    .badge.closed { background: #2d1a1a; color: #8b949e; }
+    .section { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .section h2 { font-size: 1rem; color: #8b949e; margin-bottom: 14px; }
+    .trade-item { padding: 10px 0; border-bottom: 1px solid #21262d; font-size: 0.88rem; }
+    .trade-item:last-child { border-bottom: none; }
+    .trade-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .tag { padding: 1px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .tag.buy { background: #1a3a1a; color: #3fb950; }
+    .tag.sell { background: #3a1a1a; color: #f85149; }
+    .tag.bull-tag { background: #3a1a1a; color: #ffa657; }
+    .tag.bear-tag { background: #1a2a3a; color: #79c0ff; }
+    .reason { color: #8b949e; font-size: 0.8rem; }
+    .debate-item { padding: 12px 0; border-bottom: 1px solid #21262d; }
+    .debate-item:last-child { border-bottom: none; }
+    .debate-topic { font-weight: 600; margin-bottom: 8px; font-size: 0.88rem; }
+    .opinion { font-size: 0.82rem; color: #8b949e; margin-bottom: 4px; line-height: 1.5; }
+    .empty { color: #8b949e; font-size: 0.88rem; padding: 12px 0; }
+    .updated { color: #8b949e; font-size: 0.78rem; margin-top: 24px; text-align: right; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<h1>🏟️ ARENA 대시보드</h1>
+<div class="subtitle" id="market-status">로딩 중...</div>
+
+<div class="grid">
+  <div class="card bull">
+    <h2>🐂 황소 포트폴리오</h2>
+    <div class="value" id="bull-value">—</div>
+    <div class="return-pct" id="bull-return">—</div>
+  </div>
+  <div class="card bear">
+    <h2>🐻 곰 포트폴리오</h2>
+    <div class="value" id="bear-value">—</div>
+    <div class="return-pct" id="bear-return">—</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>📋 오늘의 매매 내역</h2>
+  <div id="trades-list"><div class="empty">로딩 중...</div></div>
+</div>
+
+<div class="section">
+  <h2>⚔️ 최근 황소 vs 곰 토론</h2>
+  <div id="debates-list"><div class="empty">로딩 중...</div></div>
+</div>
+
+<div class="updated" id="updated-at">—</div>
+
+<script>
+  const STATUS_URL = './status.json';
+  function fmt(num) { return Number(num).toLocaleString('ko-KR') + '원'; }
+  function pctClass(v) { return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral'; }
+  function pctStr(v) { return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + '%'; }
+  const REASON_KO = {
+    rsi_oversold: 'RSI 과매도', rsi_overbought: 'RSI 과매수', macd_cross: 'MACD 크로스',
+    bb_lower: '볼린저 하단', bb_upper: '볼린저 상단', stop_loss: '손절', take_profit: '익절',
+  };
+
+  async function load() {
+    try {
+      const res = await fetch(STATUS_URL + '?t=' + Date.now());
+      const data = await res.json();
+
+      const bull = data.portfolio.bull;
+      const bear = data.portfolio.bear;
+      document.getElementById('bull-value').textContent = fmt(bull.value);
+      document.getElementById('bull-return').innerHTML =
+        `<span class="${pctClass(bull.return_pct)}">${pctStr(bull.return_pct)}</span>`;
+      document.getElementById('bear-value').textContent = fmt(bear.value);
+      document.getElementById('bear-return').innerHTML =
+        `<span class="${pctClass(bear.return_pct)}">${pctStr(bear.return_pct)}</span>`;
+
+      const open = data.market_open;
+      document.getElementById('market-status').innerHTML =
+        `<span class="badge ${open ? 'open' : 'closed'}">${open ? '🟢 장 운영중' : '⚫ 장 마감'}</span>`;
+
+      const tradesEl = document.getElementById('trades-list');
+      if (!data.today_trades || data.today_trades.length === 0) {
+        tradesEl.innerHTML = '<div class="empty">오늘 매매 없음</div>';
+      } else {
+        tradesEl.innerHTML = [...data.today_trades].reverse().map(t => {
+          const reason = REASON_KO[t.reason] || t.reason;
+          const time = t.timestamp ? t.timestamp.substring(11, 16) : '';
+          return `<div class="trade-item">
+            <div class="trade-header">
+              <span>
+                <span class="tag ${t.agent === 'bull' ? 'bull-tag' : 'bear-tag'}">${t.agent === 'bull' ? '🐂' : '🐻'}</span>
+                <span class="tag ${t.action === 'BUY' ? 'buy' : 'sell'}">${t.action === 'BUY' ? '매수' : '매도'}</span>
+                <strong style="margin-left:6px">${t.ticker}</strong>
+                <span style="color:#8b949e;margin-left:6px">${t.quantity}주 @ ${Number(t.price).toLocaleString()}원</span>
+              </span>
+              <span style="color:#8b949e;font-size:0.8rem">${time}</span>
+            </div>
+            <div class="reason">${reason}</div>
+          </div>`;
+        }).join('');
+      }
+
+      const debatesEl = document.getElementById('debates-list');
+      if (!data.recent_debates || data.recent_debates.length === 0) {
+        debatesEl.innerHTML = '<div class="empty">오늘 토론 없음</div>';
+      } else {
+        debatesEl.innerHTML = [...data.recent_debates].reverse().map(d => {
+          const topic = d.topic ? d.topic.replace('trade:', '') : '';
+          const time = d.timestamp ? d.timestamp.substring(11, 16) : '';
+          return `<div class="debate-item">
+            <div class="debate-topic">${topic} <span style="color:#8b949e;font-size:0.78rem">${time}</span></div>
+            <div class="opinion">🐂 ${d.bull_opinion || ''}</div>
+            <div class="opinion">🐻 ${d.bear_opinion || ''}</div>
+          </div>`;
+        }).join('');
+      }
+
+      document.getElementById('updated-at').textContent =
+        '마지막 업데이트: ' + (data.updated_at || '—').replace('T', ' ').substring(0, 16);
+
+    } catch (e) {
+      document.getElementById('market-status').textContent = '데이터 로드 실패: ' + e.message;
+    }
+  }
+
+  load();
+  setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>
