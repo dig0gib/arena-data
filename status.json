@@ -1,8 +1,14 @@
 {
-  "updated_at": "초기값 — ARENA 엔진 시작 후 자동 갱신됩니다",
+  "updated_at": "2026-04-29T07:29:05.629544",
   "portfolio": {
-    "bull": { "value": 3000000, "return_pct": 0.0 },
-    "bear": { "value": 3000000, "return_pct": 0.0 },
+    "bull": {
+      "value": 3000000,
+      "return_pct": 0.0
+    },
+    "bear": {
+      "value": 3000000,
+      "return_pct": 0.0
+    },
     "initial_capital": 3000000
   },
   "today_trades": [],
